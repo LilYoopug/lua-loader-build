@@ -23,7 +23,15 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential git
+        sudo apt-get install -y build-essential git wget unzip
+        
+    - name: Download Android NDK
+      run: |
+        cd /tmp
+        wget https://dl.google.com/android/repository/android-ndk-r21e-linux-x86_64.zip
+        unzip -q android-ndk-r21e-linux-x86_64.zip
+        export NDK=/tmp/android-ndk-r21e
+        echo "NDK=$NDK" >> $GITHUB_ENV
         
     - name: Download LuaJIT source
       run: |
@@ -32,19 +40,19 @@ jobs:
         cd LuaJIT
         git checkout v2.1
         
-    - name: Build LuaJIT for host (arm64)
+    - name: Build LuaJIT for arm64-v8a
       run: |
         cd /tmp/LuaJIT
         make clean
-        make BUILDMODE=static
+        make HOST_CC="gcc -m64" CROSS=$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21- TARGET_SYS=Linux BUILDMODE=static
         mkdir -p $GITHUB_WORKSPACE/src/main/jni/luajit/arm64-v8a
         cp src/libluajit.a $GITHUB_WORKSPACE/src/main/jni/luajit/arm64-v8a/
         
-    - name: Build LuaJIT for arm32
+    - name: Build LuaJIT for armeabi-v7a
       run: |
         cd /tmp/LuaJIT
         make clean
-        make BUILDMODE=static
+        make HOST_CC="gcc -m32" CROSS=$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/armv7a-linux-androideabi21- TARGET_SYS=Linux BUILDMODE=static
         mkdir -p $GITHUB_WORKSPACE/src/main/jni/luajit/armeabi-v7a
         cp src/libluajit.a $GITHUB_WORKSPACE/src/main/jni/luajit/armeabi-v7a/
         
@@ -53,6 +61,7 @@ jobs:
         ls -lh $GITHUB_WORKSPACE/src/main/jni/luajit/arm64-v8a/libluajit.a
         ls -lh $GITHUB_WORKSPACE/src/main/jni/luajit/armeabi-v7a/libluajit.a
         file $GITHUB_WORKSPACE/src/main/jni/luajit/arm64-v8a/libluajit.a
+        file $GITHUB_WORKSPACE/src/main/jni/luajit/armeabi-v7a/libluajit.a
         
     - name: Commit and push libraries
       run: |
@@ -60,7 +69,7 @@ jobs:
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
         git config --local user.name "github-actions[bot]"
         git add src/main/jni/luajit/*/libluajit.a
-        git diff --staged --quiet || git commit -m "Auto-build: Add LuaJIT prebuilt libraries"
+        git diff --staged --quiet || git commit -m "Auto-build: Add LuaJIT prebuilt libraries for Android ARM"
         
     - name: Push changes
       uses: ad-m/github-push-action@master
