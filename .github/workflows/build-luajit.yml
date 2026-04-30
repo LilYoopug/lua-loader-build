@@ -7,6 +7,9 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build-luajit:
     runs-on: ubuntu-latest
@@ -14,7 +17,9 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-      
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
     - name: Install dependencies
       run: |
         sudo apt-get update
@@ -56,7 +61,12 @@ jobs:
         git config --local user.name "github-actions[bot]"
         git add src/main/jni/luajit/*/libluajit.a
         git diff --staged --quiet || git commit -m "Auto-build: Add LuaJIT prebuilt libraries"
-        git push
+        
+    - name: Push changes
+      uses: ad-m/github-push-action@master
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        branch: ${{ github.ref }}
         
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
