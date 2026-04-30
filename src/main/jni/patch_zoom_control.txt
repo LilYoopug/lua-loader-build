@@ -1,0 +1,4 @@
+// Patch notes for Zoom Control changes
+// - Added ZoomValue float and hooks for KukouriCamera.ChangeZoomLevel(int) and SetZoomValueTo(float)
+// - When ZoomHack is enabled, both methods force the camera zoom to ZoomValue from UI slider
+// - Kept GetMaxZoom override as before (configurable Max Zoom Override), but this is no longer primary control
