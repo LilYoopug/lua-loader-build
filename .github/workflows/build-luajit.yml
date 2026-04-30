@@ -1,0 +1,67 @@
+name: Build LuaJIT Libraries
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-luajit:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+      
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential git
+        
+    - name: Download LuaJIT source
+      run: |
+        cd /tmp
+        git clone https://github.com/LuaJIT/LuaJIT.git
+        cd LuaJIT
+        git checkout v2.1
+        
+    - name: Build LuaJIT for host (arm64)
+      run: |
+        cd /tmp/LuaJIT
+        make clean
+        make BUILDMODE=static
+        mkdir -p $GITHUB_WORKSPACE/src/main/jni/luajit/arm64-v8a
+        cp src/libluajit.a $GITHUB_WORKSPACE/src/main/jni/luajit/arm64-v8a/
+        
+    - name: Build LuaJIT for arm32
+      run: |
+        cd /tmp/LuaJIT
+        make clean
+        make BUILDMODE=static
+        mkdir -p $GITHUB_WORKSPACE/src/main/jni/luajit/armeabi-v7a
+        cp src/libluajit.a $GITHUB_WORKSPACE/src/main/jni/luajit/armeabi-v7a/
+        
+    - name: Verify libraries
+      run: |
+        ls -lh $GITHUB_WORKSPACE/src/main/jni/luajit/arm64-v8a/libluajit.a
+        ls -lh $GITHUB_WORKSPACE/src/main/jni/luajit/armeabi-v7a/libluajit.a
+        file $GITHUB_WORKSPACE/src/main/jni/luajit/arm64-v8a/libluajit.a
+        
+    - name: Commit and push libraries
+      run: |
+        cd $GITHUB_WORKSPACE
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        git add src/main/jni/luajit/*/libluajit.a
+        git diff --staged --quiet || git commit -m "Auto-build: Add LuaJIT prebuilt libraries"
+        git push
+        
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: luajit-libraries
+        path: |
+          src/main/jni/luajit/arm64-v8a/libluajit.a
+          src/main/jni/luajit/armeabi-v7a/libluajit.a
